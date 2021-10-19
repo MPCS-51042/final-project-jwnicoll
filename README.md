@@ -30,7 +30,7 @@ The hypothesis would be that longer commutes correspond to worse performance in 
 
 Project idea #3 (Optional): Don’t have anything in mind right now.
 
-###################################################################
+############################################################################################################################################
 # To do list and time frames for Project idea 1:
 
 By the end of week 5, I will have explored NLTK so that I know what type of input I need for my sentiment analyzer. (The Rotten Tomatoes reviews do come with scores, so I think this lends itself to a natural way to train the analyzer.) By this point, I will also have started writing my webcrawler for the Rotten Tomatoes website.
