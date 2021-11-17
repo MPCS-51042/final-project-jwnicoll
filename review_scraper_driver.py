@@ -17,6 +17,22 @@ ALPHA = 0.204
 # Crawling Rotten Tomatoes
 #########################################################################
 def read_reviews_page(driver, reviews_and_scores):
+    '''
+        Collects the reviews on a given page, and maps reviews
+        to whether they were positive or negative. Reviews labeled
+        'fresh' or 'certified-fresh' are considered positive,
+        and reviews labeled 'rotten' are considered negative.
+
+        Inputs:
+            driver: A selenium.webdriver Firefox object. The appropriate url
+                is passed to the driver before this function is called.
+
+            reviews_and_scores: A dict object mapping the text of a review
+                to whether it is positive or negative.
+        
+        Returns:
+            Nothing is returned. reviews_and_scores is modified in place.
+    '''
     rows = driver.find_elements_by_class_name('review_table_row')
     for row in rows:
         # True for fresh review, False for rotten review.
@@ -35,6 +51,27 @@ def read_reviews_page(driver, reviews_and_scores):
             continue
 
 def crawl_reviews(driver, reviews_url, page_count=50):
+    '''
+        This function processes all critic reviews on the Rotten Tomatoes
+        website associated with a single movie. We obtain a mapping
+        of the text of reviews to whether the review was positive or negative.
+
+        Inputs:
+            driver: A selenium.webdriver Firefox object.
+            
+            reviews_url: A str object containing the url of the page with
+                all critic reviews for a given movie.
+            
+            page_count: An int object specifying the maximum number of
+                pages to crawl. 20 reviews can be displayed on each page,
+                so we will obtain a maximum of 1020 reviews for a given movie
+                by default.
+            
+        Returns:
+            The reviews_and_scores dict object which maps the text of each
+                review to a boolean indicating whether the review was
+                positive or negative.
+    '''
     driver.get(reviews_url)
     reviews_and_scores = {}
     # See if there is another next button to click.
@@ -52,6 +89,25 @@ def crawl_reviews(driver, reviews_url, page_count=50):
     return reviews_and_scores
 
 def read_movie_page(driver, movie_url, reviews):
+    '''
+        This function collects all of the information we want
+        for a single movie.
+
+        Inputs:
+            driver: A selenium.webdriver Firefox object.
+
+            movie_url: A str object containing the url of the Rotten Tomatoes
+                page for a given movie.
+            
+            reviews: A dict object mapping the title of a movie to a list
+                containing the reviews_and_scores dictionary described above,
+                the audience score for the movie, the critic score fo the
+                movie, and the Rotten Tomatoes grade for the movie.
+        
+        Returns:
+            Nothing is returned by this function. The reviews dictionary
+                is modified in place.
+    '''
     driver.get(movie_url)
     try:
         scoreboard = driver.find_element_by_class_name('thumbnail-scoreboard-wrap')
@@ -72,6 +128,22 @@ def read_movie_page(driver, movie_url, reviews):
     reviews[title] = [crawl_reviews(driver, reviews_url), audience_score, tomatometer_score, grade]
 
 def find_reviews(all_movies_url, num_clicks):
+    '''
+        This function generates the reviews dictionary described above from
+        from the Rotten Tomatoes page containing all movies with information
+        stored on the site.
+
+        Inputs:
+            all_movies_url: A str object containing the url of the page
+                containing all movies with information stored on
+                Rotten Tomatoes.
+            
+            num_clicks: An int indicating how many times "Show More" should be
+                clicked. Each click displays an additional 32 movies.
+        
+        Returns:
+            The reviews dictionary object described above.
+    '''
     driver = Firefox()
     driver.get(all_movies_url)
     reviews = {}
@@ -101,21 +173,49 @@ def find_reviews(all_movies_url, num_clicks):
     return reviews
 
 def get_reviews_and_scores(all_movies_url, num_clicks):
+    '''
+        This function builds the reviews object described above, and generates
+        csv files, as described in those functions' doc strings.
+        Inputs:
+            all_movies_url: A str object, as described above.
+
+            num_clicks: An int as described above.
+        
+        Returns:
+            Nothing is returned, but the csv files are generated.
+    '''
     reviews = find_reviews(all_movies_url, num_clicks)
     gen_csv(reviews, 'rottentomatoes.csv')
     gen_csv_reviews_text(reviews, 'reviewstext.csv')
 
-def build_sentiment_analyzer(reviews_text_csv):
-    df_train, df_test = sda.make_train_test(reviews_text_csv)
-    analyzer = sa.SentimentAnalyzer()
-    analyzer.train(df_train, df_test)
-    return analyzer
+#def build_sentiment_analyzer(reviews_text_csv):
+#    df_train, df_test = sda.make_train_test(reviews_text_csv)
+#    analyzer = sa.SentimentAnalyzer()
+#    analyzer.train(df_train, df_test)
+#    return analyzer
 
 #ANALYZER = build_sentiment_analyzer(reviews_text_csv)
 ###################################################################
 # Rescoring Movie
 ###################################################################
 def rescore_movie(movie_url, sentiment_strengths):
+    '''
+        This function uses the constructed sentiment_strengths dictionary
+        to rescore a movie using that movie's reviews.
+
+        Inputs:
+            movie_url: A str object containing the Rotten Tomatoes webpage
+                of the movie to be rescored.
+            
+            sentiment_strengths: A dict object mapping words, bigrams, and
+                trigrams to values characterizing their association with
+                negative and positive reviews.
+        
+        Returns:
+            Nothing is returned. However, this function prints the appropriate
+                movie title, audience score, critic score, and the score
+                awared by a sentiment analysis of the movie's reviews.
+    '''
     driver = Firefox()
     reviews = {}
     read_movie_page(driver, movie_url, reviews)
@@ -140,6 +240,27 @@ def rescore_movie(movie_url, sentiment_strengths):
 # Adding Sentiment Scores.
 ###################################################################
 def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, file_name):
+    '''
+        This function creates a csv with rows containing a movie title, that
+        movie's audience score, its critic score, its Rotten Tomatoes rating,
+        and its score awarded by a sentiment analysis of the movie's reviews.
+
+        Inputs:
+            scores_csv: A str object containing the name of a csv file
+                generated by gen_csv.
+
+            reviews_csv: A str object containing the name of a csv file
+                generated by gen_csv_reviews_text.
+            
+            sentiment_strengths: A dict object as described in rescore movie.
+
+            file_name: A string containing the name of the csv file
+                to be created.
+        
+        Returns:
+            Nothing is returned. A csv file as described in gen_csv_sentiment
+                is created.
+    '''
     reviews = gen_revs_from_csvs(scores_csv, reviews_csv)
     for movie, info in reviews.items():
         revs = info[0]
@@ -158,6 +279,20 @@ def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, file_name
 # Storing Data.
 ##################################################################
 def gen_csv(reviews, file_name):
+    '''
+        A function which creates a csv file whose rows contain a movie title,
+        that movie's audience score, its critic score, and its
+        Rotten Tomatoes rating.
+
+        Inputs:
+            reviews: A dict object as described in read_movie_page.
+
+            file_name: A str object containing the name of the csv
+                file to be made.
+
+        Returns:
+            Nothing is returned by the csv file described above is created.
+    '''
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter = ',')
         header = ['Title', 'Audience Score', 'Tomatometer Score', 'Rating']
@@ -166,16 +301,19 @@ def gen_csv(reviews, file_name):
             row = [title] + information[1:]
             writer.writerow(row)
 
-def gen_csv_sentiment(reviews, file_name):
-    with open(file_name, 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter = ',')
-        header = ['Title', 'Audience Score', 'Tomatometer Score', 'Rating', 'SA Score']
-        writer.writerow(header)
-        for title, information in reviews.items():
-            row = [title] + information[1:]
-            writer.writerow(row)
-
 def gen_csv_reviews_text(reviews, file_name):
+    '''
+        A function which creates a csv file whose rows contain a movie title,
+        the text of a review,
+        and True (False) if the review was positive (negative).
+
+        Inputs:
+            reviews and file_name as in gen_csv
+        
+        Returns:
+            Nothing is returned, but the appropriate csv file is created.
+
+    '''
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter = ',')
         header = ['Title', 'Review', 'Review is Positive']
@@ -185,8 +323,46 @@ def gen_csv_reviews_text(reviews, file_name):
                 row = [title] + [review_text] + [grade]
                 writer.writerow(row)
 
+def gen_csv_sentiment(reviews, file_name):
+    ''' 
+        A function which creates a csv file whose rows contain a movie title,
+        the text of a review, and True (False) if the review was
+        positive (negative).
+
+        Inputs:
+            reviews: A dict object as described in read_movie_page. This object
+                will have been modified such that values also contain scores
+                from sentiment analysis.
+
+            file_name: A str object containing the name of the csv
+                file to be made.
+
+        Returns:
+            Nothing is returned by the csv file described above is created.
+
+    '''
+    with open(file_name, 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter = ',')
+        header = ['Title', 'Audience Score', 'Tomatometer Score', 'Rating', 'SA Score']
+        writer.writerow(header)
+        for title, information in reviews.items():
+            row = [title] + information[1:]
+            writer.writerow(row)
+
 # This function might just be for me.
 def gen_revs_from_csvs(scores_csv, reviews_csv):
+    '''
+        A function which creates a reviews object from the csv files we
+        described above.
+
+        Inputs:
+            scores_csv: A str object containing the name of the csv file
+                which will have been created using gen_csv or
+                gen_csv_sentiment.
+
+            reviews_csv: A str object containing the name of the csv file
+                created using gen_csv_reviews_text.
+    '''
     reviews = {}
     with open(reviews_csv, 'r') as f:
         csv_file = csv.reader(f)
@@ -216,19 +392,41 @@ def gen_revs_from_csvs(scores_csv, reviews_csv):
                 audience_score = line[1]
                 tomatometer_score = line[2]
                 grade = line[3]
-                sa_score = line[4]
-                info += [audience_score, tomatometer_score, grade, sa_score]
+                info += [audience_score, tomatometer_score, grade]
+                # Add sentiment scores if they are in the csv.
+                try:
+                    sa_score = line[4]
+                    info += [sa_score]
+                except:
+                    continue
     return reviews
 
 #############################################################################
 # Crawling IMDb
 #############################################################################
 def find_imdb_scores_on_page(driver, imdb_scores):
+    '''
+        A function to associated movie titles to their imdb scores
+        on a single page.
+        
+        Inputs:
+            driver: A selenium.webdriver Firefox object, with a url already
+                passed in.
+            
+            imdb_scores: A dict object whose keys are movie titles and
+                whose values are strings containing the imdb score fo that
+                movie, on a scale of 1 to 10.
+        
+        Returns:
+            Nothing is returned. imdb_scores is modified in place.
+    '''
     movie_names_tags = driver.find_elements_by_class_name('lister-item-header')
     movie_ratings_tags = driver.find_elements_by_class_name('ratings-imdb-rating')
     i = 0
     for name_tag in movie_names_tags:
         title = name_tag.find_element_by_tag_name('a').text
+        # We subscript because there is no convenient tag for which these
+        # are both subtags.
         rating_tag = movie_ratings_tags[i]
         rating = rating_tag.find_element_by_tag_name('strong').text
         # Make sure move doesn't already have a review for some reason.
@@ -237,6 +435,17 @@ def find_imdb_scores_on_page(driver, imdb_scores):
         i += 1
 
 def crawl_imdb_movies(imdb_url):
+    '''
+        A function to generate the imdb_scores dictionary described above
+        for a list of approximately 10000 movies.
+
+        Inputs:
+            imdb_url: A str object containing the url for a page with imdb
+                movies and scores.
+
+        Returns:
+            The imdb_scores dictionary object described above.
+    '''
     driver = Firefox()
     driver.get(imdb_url)
     imdb_scores = {}
@@ -255,6 +464,20 @@ def crawl_imdb_movies(imdb_url):
     return imdb_scores
 
 def gen_csv_imdb_scores(imdb_scores, file_name):
+    '''
+        A function to generate a csv file from the imdb_scores object
+        described above. The rows of the csv file will contain a movie
+        title and its score from 1-10 according to imdb.
+
+        Inputs:
+            imdb_scores: A dict object as described above.
+
+            file_name: A str object containing the name of the csv file
+                to be created.
+        
+        Returns:
+            Nothing is returned, but the csv file described is created.
+    '''
     with open(file_name, 'w') as csv_file:
         writer = csv.writer(csv_file, delimiter = ',')
         header = ['Title', 'IMDb Score']
@@ -265,5 +488,9 @@ def gen_csv_imdb_scores(imdb_scores, file_name):
             writer.writerow(row)
 
 def imdb_scores_csv(imdb_url, file_name):
+    '''
+        A function combining the previous two, which creates the desired
+        csv file directly from the imdb url.
+    '''
     imdb_scores = crawl_imdb_movies(imdb_url)
     gen_csv_imdb_scores(imdb_scores, file_name)
