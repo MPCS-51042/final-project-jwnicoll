@@ -4,14 +4,11 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 import sentimentanalyzer as sa
 import scores_data_analysis as sda
 
-ALPHA = 0.204
-
 # Dune Reviews URL = 'https://www.rottentomatoes.com/m/dune_2021/reviews'
 # Dune Movie Page = 'https://www.rottentomatoes.com/m/dune_2021'
 # All Movies Page = 'https://www.rottentomatoes.com/browse/dvd-streaming-all/'
 # IMDB = 'https://www.imdb.com/search/title/?num_votes=10000,&sort=user_rating,desc&title_type=feature'       Using this one.
 # Or Here: = 'https://www.imdb.com/search/title/?title_type=feature&num_votes=10000,&countries=us&sort=user_rating,desc&ref_=adv_prv'
-
 
 #########################################################################
 # Crawling Rotten Tomatoes
@@ -28,16 +25,17 @@ def read_reviews_page(driver, reviews_and_scores):
                 is passed to the driver before this function is called.
 
             reviews_and_scores: A dict object mapping the text of a review
-                to whether it is positive or negative.
+                to a boolean indicating whether it is positive (True)
+                or negative (False).
         
         Returns:
             Nothing is returned. reviews_and_scores is modified in place.
     '''
     rows = driver.find_elements_by_class_name('review_table_row')
     for row in rows:
-        # True for fresh review, False for rotten review.
         try:
-            review_name = row.find_element_by_class_name('review_icon').get_attribute("class")
+            review_name = row.find_element_by_class_name('review_icon') \
+                             .get_attribute("class")
             if 'fresh' in review_name:
                 score = True
             else:
@@ -76,13 +74,12 @@ def crawl_reviews(driver, reviews_url, page_count=50):
     reviews_and_scores = {}
     # See if there is another next button to click.
     more_reviews = True
-    # We won't collect more than 50x20 = 1000 reviews per movie
-    # unless otherwise specified.
     count = 0
     while more_reviews and count <= page_count:
         read_reviews_page(driver, reviews_and_scores)
         try:
-            driver.find_element_by_class_name('js-prev-next-paging-next').click()
+            driver.find_element_by_class_name('js-prev-next-paging-next') \
+                  .click()
         except:
             more_reviews = False
         count += 1
@@ -123,9 +120,9 @@ def read_movie_page(driver, movie_url, reviews):
     tomatometer_score = ratings.get_attribute('tomatometerscore')
     grade = ratings.get_attribute('tomatometerstate')
     revs = driver.find_element_by_class_name('view_all_critic_reviews')
-    #reviews_url = 'https://www.rottentomatoes.com' + revs['href']
     reviews_url = revs.get_attribute('href')
-    reviews[title] = [crawl_reviews(driver, reviews_url), audience_score, tomatometer_score, grade]
+    reviews[title] = [crawl_reviews(driver, reviews_url), audience_score, \
+                      tomatometer_score, grade]
 
 def find_reviews(all_movies_url, num_clicks):
     '''
@@ -142,7 +139,7 @@ def find_reviews(all_movies_url, num_clicks):
                 clicked. Each click displays an additional 32 movies.
         
         Returns:
-            The reviews dictionary object described above.
+            The reviews dict object described above.
     '''
     driver = Firefox()
     driver.get(all_movies_url)
@@ -160,14 +157,7 @@ def find_reviews(all_movies_url, num_clicks):
     for movie in movies:
         movie_url = movie.find_element_by_tag_name('a').get_attribute('href')
         url_list.append(movie_url)
-    #tag = driver.find_element_by_id('main_container')
-    #script_tags = tag.find_elements_by_tag_name('script')
-    #url_list = []
-    #for script in script_tags:
-    #    txt = script.get_attribute('innerHTML')
-    #    url_list += re.findall('url\":\"[/_\-0-9a-zA-Z]*', txt)
     for url in url_list:
-        #movie_url = 'https://www.rottentomatoes.com' + url[6:]
         read_movie_page(driver, url, reviews)
     driver.quit()
     return reviews
@@ -185,16 +175,9 @@ def get_reviews_and_scores(all_movies_url, num_clicks):
             Nothing is returned, but the csv files are generated.
     '''
     reviews = find_reviews(all_movies_url, num_clicks)
-    gen_csv(reviews, 'rottentomatoes.csv')
+    gen_csv(reviews, 'rottentomatoes.csv', sa_scores=False)
     gen_csv_reviews_text(reviews, 'reviewstext.csv')
 
-#def build_sentiment_analyzer(reviews_text_csv):
-#    df_train, df_test = sda.make_train_test(reviews_text_csv)
-#    analyzer = sa.SentimentAnalyzer()
-#    analyzer.train(df_train, df_test)
-#    return analyzer
-
-#ANALYZER = build_sentiment_analyzer(reviews_text_csv)
 ###################################################################
 # Rescoring Movie
 ###################################################################
@@ -226,6 +209,7 @@ def rescore_movie(movie_url, sentiment_strengths):
         total_sentiment = 0
         num_reviews = 0
         for rev in revs.keys():
+            rev = str(rev)
             sentiment = sa.get_sentiment(rev, sentiment_strengths)
             total_sentiment += sentiment
             num_reviews += 1
@@ -239,7 +223,8 @@ def rescore_movie(movie_url, sentiment_strengths):
 ###################################################################
 # Adding Sentiment Scores.
 ###################################################################
-def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, file_name):
+def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, \
+                         file_name, reviews=None):
     '''
         This function creates a csv with rows containing a movie title, that
         movie's audience score, its critic score, its Rotten Tomatoes rating,
@@ -256,12 +241,16 @@ def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, file_name
 
             file_name: A string containing the name of the csv file
                 to be created.
+            
+            reviews: The reviews dict object described above. If it is not
+                passed in, we generate it.
         
         Returns:
-            Nothing is returned. A csv file as described in gen_csv_sentiment
+            Nothing is returned. A csv file as described in gen_csv
                 is created.
     '''
-    reviews = gen_revs_from_csvs(scores_csv, reviews_csv)
+    if not reviews:
+        reviews = gen_revs_from_csvs(scores_csv, reviews_csv, False)
     for movie, info in reviews.items():
         revs = info[0]
         total_sa_score = 0
@@ -271,14 +260,14 @@ def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, file_name
             sa_score = sa.get_sentiment(rev, sentiment_strengths)
             total_sa_score += sa_score
             num_revs += 1
-        info[5] = str(total_sa_score / num_revs)
+        info += [str(total_sa_score / num_revs)]
         reviews[movie] = info
-    gen_csv_sentiment(reviews, file_name)
+    gen_csv(reviews, file_name, sa_scores=True)
 
 ##################################################################
 # Storing Data.
 ##################################################################
-def gen_csv(reviews, file_name):
+def gen_csv(reviews, file_name, sa_scores):
     '''
         A function which creates a csv file whose rows contain a movie title,
         that movie's audience score, its critic score, and its
@@ -289,13 +278,18 @@ def gen_csv(reviews, file_name):
 
             file_name: A str object containing the name of the csv
                 file to be made.
+            
+            sa_scores: A boolean indicating whether sentiment scores
+                have been added to the reviews object.
 
         Returns:
-            Nothing is returned by the csv file described above is created.
+            Nothing is returned, but the csv file described above is created.
     '''
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter = ',')
         header = ['Title', 'Audience Score', 'Tomatometer Score', 'Rating']
+        if sa_scores:
+            header += ['SA Score']
         writer.writerow(header)
         for title, information in reviews.items():
             row = [title] + information[1:]
@@ -312,7 +306,6 @@ def gen_csv_reviews_text(reviews, file_name):
         
         Returns:
             Nothing is returned, but the appropriate csv file is created.
-
     '''
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter = ',')
@@ -323,45 +316,23 @@ def gen_csv_reviews_text(reviews, file_name):
                 row = [title] + [review_text] + [grade]
                 writer.writerow(row)
 
-def gen_csv_sentiment(reviews, file_name):
-    ''' 
-        A function which creates a csv file whose rows contain a movie title,
-        the text of a review, and True (False) if the review was
-        positive (negative).
-
-        Inputs:
-            reviews: A dict object as described in read_movie_page. This object
-                will have been modified such that values also contain scores
-                from sentiment analysis.
-
-            file_name: A str object containing the name of the csv
-                file to be made.
-
-        Returns:
-            Nothing is returned by the csv file described above is created.
-
-    '''
-    with open(file_name, 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter = ',')
-        header = ['Title', 'Audience Score', 'Tomatometer Score', 'Rating', 'SA Score']
-        writer.writerow(header)
-        for title, information in reviews.items():
-            row = [title] + information[1:]
-            writer.writerow(row)
-
-# This function might just be for me.
-def gen_revs_from_csvs(scores_csv, reviews_csv):
+def gen_revs_from_csvs(scores_csv, reviews_csv, sa_scores):
     '''
         A function which creates a reviews object from the csv files we
         described above.
 
         Inputs:
             scores_csv: A str object containing the name of the csv file
-                which will have been created using gen_csv or
-                gen_csv_sentiment.
+                which will have been created using gen_csv.
 
             reviews_csv: A str object containing the name of the csv file
                 created using gen_csv_reviews_text.
+            
+            sa_scores: A boolean indicating whether sentiment analyzer scores
+                are present (True) or absent (False) in the csv.
+        
+        Returns:
+            The dict object reviews, as described above.
     '''
     reviews = {}
     with open(reviews_csv, 'r') as f:
@@ -394,11 +365,9 @@ def gen_revs_from_csvs(scores_csv, reviews_csv):
                 grade = line[3]
                 info += [audience_score, tomatometer_score, grade]
                 # Add sentiment scores if they are in the csv.
-                try:
+                if sa_scores:
                     sa_score = line[4]
                     info += [sa_score]
-                except:
-                    continue
     return reviews
 
 #############################################################################
@@ -406,7 +375,7 @@ def gen_revs_from_csvs(scores_csv, reviews_csv):
 #############################################################################
 def find_imdb_scores_on_page(driver, imdb_scores):
     '''
-        A function to associated movie titles to their imdb scores
+        A function to associate movie titles to their imdb scores
         on a single page.
         
         Inputs:
@@ -421,13 +390,13 @@ def find_imdb_scores_on_page(driver, imdb_scores):
             Nothing is returned. imdb_scores is modified in place.
     '''
     movie_names_tags = driver.find_elements_by_class_name('lister-item-header')
-    movie_ratings_tags = driver.find_elements_by_class_name('ratings-imdb-rating')
+    ratings_tags = driver.find_elements_by_class_name('ratings-imdb-rating')
+    # We subscript because there is no convenient tag for which these
+    # are both subtags.
     i = 0
     for name_tag in movie_names_tags:
         title = name_tag.find_element_by_tag_name('a').text
-        # We subscript because there is no convenient tag for which these
-        # are both subtags.
-        rating_tag = movie_ratings_tags[i]
+        rating_tag = ratings_tags[i]
         rating = rating_tag.find_element_by_tag_name('strong').text
         # Make sure move doesn't already have a review for some reason.
         if not imdb_scores.get(title):
