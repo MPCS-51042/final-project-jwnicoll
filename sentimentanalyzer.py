@@ -35,6 +35,21 @@ STOPWORDS = nltk.corpus.stopwords.words('english')
 STOPWORDS.append("n't")
 
 def get_revs(df_train):
+    '''
+        A function that obtains a mapping of review text to whether the review
+        was positive or negative.
+
+        Inputs:
+            df_train: A pandas DataFrame object containing a column with movie
+                titles, a column with the text of a review for that movie,
+                and a column with True (False) indicating the review was
+                positive (negative).
+        
+        Returns:
+            A dict object mapping the reviews of movies to numpy.bool_ objects
+            indicating whether they are positive (True) or negative (False).
+    
+    '''
     revs = {}
     for i in range(len(df_train)):
         rev = df_train['Review'][i]
@@ -43,6 +58,17 @@ def get_revs(df_train):
     return revs
 
 def tokenize(rev):
+    '''
+        A function to convert the text of a review into a list of words.
+        We remove names, punctuation, common words that do not carry sentiment
+        and will clutter our analysis, and we force words to be lower case.
+
+        Inputs:
+            rev: A str object containing the text of a review
+
+        Returns:
+            A list object containing the words in the review.
+    '''
     potential_tokens = rev.split()
     tokens = []
     for token in potential_tokens:
@@ -64,11 +90,18 @@ def tokenize(rev):
 # HAVE TO REMOVE STARTING AND ENDING PUCTUATION
 def create_distributions(revs, n):
     '''
+        A function which maps ngrams to the number of times
+        they appear in positive and negative reviews.
+
         Inputs:
-            revs (dict): Dictionary mapping reviews as strings to
-                booleans indicating whether the review is positive (True)
-                or negative.
-            n (int): Integer indicating what n grams we want.
+            revs: A dict object as described above.
+
+            n: An int object indicating what ngrams we want.
+        
+        Returns:
+            pos_revs_dist, neg_revs_dist: dict objects whose keys are ngrams
+                and whose values are the number of occurrences of those
+                ngrams in positive (negative) reviews.
     '''
     pos_revs_dist = {}
     neg_revs_dist = {}
@@ -94,6 +127,26 @@ def create_distributions(revs, n):
 # all-at-once: alpha: 0.204   ratio: 0.793    zeros: 622
 # For Reference, vader scored:    ratio: 0.708   zeros: 581
 def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
+    '''
+        This function finds the words which occur most frequently in positive
+        and negative reviews. We remove words which are deemed to occur
+        frequently in positive and negative reviews, since their sentiment is
+        ambiguous.
+
+        Inputs:
+            pos_revs_dist, neg_revs_dist: The dict objects described above.
+
+            alpha: A float object indicating the proportion of the smaller of
+                pos_revs_dist and neg_revs_dist we wish to use in classifying
+                words as frequently occurring. The default value was the
+                empirically derived value for this tuning parameter.
+            
+        Returns:
+            Two list objects each with the same number of tuples of words and
+            their number of occurrences in positive (negative) reviews. Common
+            words are removed. The lists are sorted from most frequently
+            occurring to least.
+    '''
     pos_revs_sorted = sorted(pos_revs_dist.items(), \
                             key=lambda x: x[1], reverse=True)
     neg_revs_sorted = sorted(neg_revs_dist.items(), \
@@ -121,11 +174,21 @@ def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
 # May want to include num_tiers parameter for finer resolution.
 def stratify(most_common_pos, most_common_neg, sentiment_strengths):
     '''
+        A function to build sentiment_strengths, which is a dictionary
+        whose keys are words and whose values are the sentiment scores
+        associated with those words. We divide the most commonly occurring
+        words in positive (negative) reviews into four categories, and assign
+        scores from 4 to 1 (-4 to -1) based on the categories, with higher
+        magnitudes representing stronger sentiment.
+
         Inputs:
-            most_common_pos, most_common_neg (list): Lists of tuples containing
-                most commonly appearing words in positive (negative) reviews
-                and the number of appearances of those words.
-                We use the fact that these lists will have the same length.
+            most_common_pos, most_common_neg: lists of tuples
+                as described above.
+            
+            sentiment_strengths: A dictionary object as described above.
+        
+        Returns:
+            Nothing is returned. sentiment_strengths is modified in place.
     '''
     num_words = len(most_common_pos)
     top = round(num_words / 20)
@@ -139,6 +202,23 @@ def stratify(most_common_pos, most_common_neg, sentiment_strengths):
 
 # Maybe add flexibility to not have to check for 1, 2, and 3 grams.
 def test(df_test, sentiment_strengths):
+    '''
+        A function which tests sentiment_strengths' ability to classify
+        new reviews as positive or negative. If the reviews' sentiment is
+        positive (negative), the review is classified as positive (negative).
+        Nothing is done for 0 sentiment reviews.
+
+        Inputs:
+            df_test: A pandas DataFrame object containing a column with movie
+                titles, a column with the text of a review for that movie,
+                and a column with True (False) indicating the review was
+                positive (negative).
+            
+            sentiment_strengths: dict object as described previously.
+        
+        Returns: The proportion of the reviews that were classified correctly,
+            of the reviews that were able to be classified.
+    '''
     correct = 0
     total = 0
     zeros = 0
@@ -167,6 +247,19 @@ def test(df_test, sentiment_strengths):
     return correct / total
 
 def create_big_dist(revs):
+    '''
+        A function which maps ngrams to the number of times
+        they appear in positive and negative reviews.
+        We consider ngrams for n = 1, 2, and 3.
+
+        Inputs:
+            revs: A dict object as described above.
+        
+        Returns:
+            pos_revs_dist, neg_revs_dist: dict objects whose keys are ngrams
+                and whose values are the number of occurrences of those
+                ngrams in positive (negative) reviews.
+    '''
     pos_revs_dist = {}
     neg_revs_dist = {}
     for rev, is_pos in revs.items():
@@ -186,6 +279,17 @@ def create_big_dist(revs):
     return pos_revs_dist, neg_revs_dist
 
 def get_sentiment(rev, sentiment_strengths):
+    '''
+        A function which computes the sentiment strength of a review.
+        We add the sentiments of all of the words in the review,
+        as determined by sentiment_strengths.
+        We then normalize to obtain a score between 0 and 100.
+
+        Inputs:
+            rev: A str object containing the text of a review.
+
+            sentiment_strengths: A dict object, as described previously.
+    '''
     sentiment = 0
     rev = tokenize(rev)
     num_words = len(rev)
@@ -202,6 +306,15 @@ def get_sentiment(rev, sentiment_strengths):
     return sentiment
 
 def build_sentiment_strengths(df_train):
+    '''
+        A function which builds
+
+        Inputs:
+            df_train: A pandas DataFrame object as described previously
+        
+        Returns:
+            The sentiment_strengths dict object, as described previously.
+    '''
     sentiment_strengths = {}
     revs = get_revs(df_train)
     pos_revs_dist, neg_revs_dist = create_big_dist(revs)
