@@ -210,7 +210,8 @@ def rescore_movie(movie_url, sentiment_strengths):
         num_reviews = 0
         for rev in revs.keys():
             rev = str(rev)
-            sentiment = sa.get_sentiment(rev, sentiment_strengths)
+            raw_score = sa.get_sentiment(rev, sentiment_strengths)
+            sentiment = sa.normalize_score(raw_score)
             total_sentiment += sentiment
             num_reviews += 1
         avg_sentiment = total_sentiment / num_reviews
@@ -257,7 +258,8 @@ def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, \
         num_revs = 0
         for rev in revs.keys():
             rev = str(rev)
-            sa_score = sa.get_sentiment(rev, sentiment_strengths)
+            raw_score = sa.get_sentiment(rev, sentiment_strengths)
+            sa_score = sa.normalize_score(raw_score)
             total_sa_score += sa_score
             num_revs += 1
         info += [str(total_sa_score / num_revs)]

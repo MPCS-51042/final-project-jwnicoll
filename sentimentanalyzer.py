@@ -72,8 +72,6 @@ def tokenize(rev):
     potential_tokens = rev.split()
     tokens = []
     for token in potential_tokens:
-    # tokens = rev.split()
-    # for token in tokens:
         # Remove stopwords and names
         if token in NAMES:
             continue
@@ -87,8 +85,8 @@ def tokenize(rev):
         tokens.append(token)
     return tokens
 
-# HAVE TO REMOVE STARTING AND ENDING PUCTUATION
-def create_distributions(revs, n):
+#CHANGE DOC STRING IF WE GO WITH THIS ALTERNATE IMPLEMENTATION
+def create_distributions(revs, n,pos_revs_dist,neg_revs_dist):
     '''
         A function which maps ngrams to the number of times
         they appear in positive and negative reviews.
@@ -96,15 +94,16 @@ def create_distributions(revs, n):
         Inputs:
             revs: A dict object as described above.
 
-            n: An int object indicating what ngrams we want.
-        
-        Returns:
+            n: An int object indicating what length ngrams we want.
+
             pos_revs_dist, neg_revs_dist: dict objects whose keys are ngrams
                 and whose values are the number of occurrences of those
                 ngrams in positive (negative) reviews.
+        
+        Returns:
+            Nothing is returned. pos_revs_dist and neg_revs_dist
+                are modified in place.
     '''
-    pos_revs_dist = {}
-    neg_revs_dist = {}
     for rev, is_pos in revs.items():
         tokens = tokenize(rev)
         num_tokens = len(tokens)
@@ -118,6 +117,38 @@ def create_distributions(revs, n):
                 token_ct = neg_revs_dist.get(token, 0)
                 token_ct += 1
                 neg_revs_dist[token] = token_ct
+
+def create_big_dist(revs):
+    '''
+        A function which maps ngrams to the number of times
+        they appear in positive and negative reviews.
+        We consider ngrams for n = 1, 2, and 3.
+
+        Inputs:
+            revs: A dict object as described above.
+        
+        Returns:
+            A tuple containing the pos_revs_dist and neg_revs_dist
+                dict objects, as described above..
+    '''
+    pos_revs_dist = {}
+    neg_revs_dist = {}
+    for i in range(1,4):
+        create_distributions(revs, i, pos_revs_dist, neg_revs_dist)
+    #for rev, is_pos in revs.items():
+        #tokens = tokenize(rev)
+        #num_tokens = len(tokens)
+        #for i in range(1, 4):
+            #for j in range(num_tokens - i + 1):
+            #    token = (' ').join(tokens[j : j + i])
+            #    if is_pos:
+            #        token_ct = pos_revs_dist.get(token, 0)
+            #        token_ct += 1
+            #        pos_revs_dist[token] = token_ct
+            #    else:
+            #        token_ct = neg_revs_dist.get(token, 0)
+            #        token_ct += 1
+            #        neg_revs_dist[token] = token_ct
     return pos_revs_dist, neg_revs_dist
 
 # Empirically derived alpha:
@@ -143,9 +174,9 @@ def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
             
         Returns:
             Two list objects each with the same number of tuples of words and
-            their number of occurrences in positive (negative) reviews. Common
-            words are removed. The lists are sorted from most frequently
-            occurring to least.
+                their number of occurrences in positive (negative) reviews.
+                Common words are removed. The lists are sorted from most 
+                frequently occurring to least.
     '''
     pos_revs_sorted = sorted(pos_revs_dist.items(), \
                             key=lambda x: x[1], reverse=True)
@@ -224,15 +255,16 @@ def test(df_test, sentiment_strengths):
     zeros = 0
     for i in range(len(df_test)):
         rev = tokenize(str(df_test['Review'][i]))
-        sentiment = 0
-        num_words = len(rev)
-        for j in range(1, 4):
-            for k in range(num_words - j + 1):
-                token = (' ').join(rev[k : k + j])
-                if j == 1 and k > 0 and rev[k-1] == 'not':
-                    sentiment -= sentiment_strengths.get(token, 0)
-                else:
-                    sentiment += sentiment_strengths.get(token, 0)
+        sentiment = get_sentiment(rev, sentiment_strengths)
+        #sentiment = 0
+        #num_words = len(rev)
+        #for j in range(1, 4):
+        #    for k in range(num_words - j + 1):
+        #        token = (' ').join(rev[k : k + j])
+        #        if j == 1 and k > 0 and rev[k-1] == 'not':
+        #            sentiment -= sentiment_strengths.get(token, 0)
+        #        else:
+        #            sentiment += sentiment_strengths.get(token, 0)
         if sentiment == 0:
             zeros += 1
             continue
@@ -245,38 +277,6 @@ def test(df_test, sentiment_strengths):
         total += 1
     print(f"zeros: {zeros}")
     return correct / total
-
-def create_big_dist(revs):
-    '''
-        A function which maps ngrams to the number of times
-        they appear in positive and negative reviews.
-        We consider ngrams for n = 1, 2, and 3.
-
-        Inputs:
-            revs: A dict object as described above.
-        
-        Returns:
-            pos_revs_dist, neg_revs_dist: dict objects whose keys are ngrams
-                and whose values are the number of occurrences of those
-                ngrams in positive (negative) reviews.
-    '''
-    pos_revs_dist = {}
-    neg_revs_dist = {}
-    for rev, is_pos in revs.items():
-        tokens = tokenize(rev)
-        num_tokens = len(tokens)
-        for i in range(1, 4):
-            for j in range(num_tokens - i + 1):
-                token = (' ').join(tokens[j : j + i])
-                if is_pos:
-                    token_ct = pos_revs_dist.get(token, 0)
-                    token_ct += 1
-                    pos_revs_dist[token] = token_ct
-                else:
-                    token_ct = neg_revs_dist.get(token, 0)
-                    token_ct += 1
-                    neg_revs_dist[token] = token_ct
-    return pos_revs_dist, neg_revs_dist
 
 def get_sentiment(rev, sentiment_strengths):
     '''
@@ -300,14 +300,20 @@ def get_sentiment(rev, sentiment_strengths):
                 sentiment -= sentiment_strengths.get(token, 0)
             else:
                 sentiment += sentiment_strengths.get(token, 0)
+    return sentiment
+
+def normalize_score(sentiment):
     # Have to decide what to do about this tuning parameter currently set to 15.
     sentiment = sentiment / math.sqrt((sentiment ** 2) + 15)
     sentiment = (sentiment + 1) * 50
     return sentiment
 
+#######################################################################################
+# Own module.
 def build_sentiment_strengths(df_train):
     '''
-        A function which builds
+        A function which builds the sentiment strengths dict object as
+        described above directly from the training data dataframe.
 
         Inputs:
             df_train: A pandas DataFrame object as described previously

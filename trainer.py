@@ -9,8 +9,8 @@ def find_alpha(min_, max_, increment, pos_revs_dist, neg_revs_dist, df_test):
         (sentiment score not equal to 0).
 
         Inputs:
-            min_, max_: float objects representing the minimum and maximum alpha
-                to be tested, respectively.
+            min_, max_: float objects representing the minimum and
+                maximum alpha to be tested, respectively.
 
             increment: A float object specifying the amount by which we will
                 increase alpha between each test.
@@ -61,7 +61,8 @@ def train_alpha(min_, max_, increment, pos_revs_dist, neg_revs_dist, df_test):
             A tuple of floats, as in the previous function.
     '''
     for _ in range(1, 4):
-        ratio, alpha = find_alpha(min_, max_, increment, pos_revs_dist, neg_revs_dist, df_test)
+        ratio, alpha = find_alpha(min_, max_, increment, \
+                                  pos_revs_dist, neg_revs_dist, df_test)
         min_ = max(alpha - increment / 2, 0)
         max_ = min(1, alpha + increment /2)
         increment /= 10
