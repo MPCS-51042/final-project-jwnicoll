@@ -1,6 +1,8 @@
 #############################################################################
 # Crawling IMDb
 #############################################################################
+# IMDB = 'https://www.imdb.com/search/title/?num_votes=10000,&sort=user_rating,desc&title_type=feature'       Using this one.
+# Or Here: = 'https://www.imdb.com/search/title/?title_type=feature&num_votes=10000,&countries=us&sort=user_rating,desc&ref_=adv_prv'
 import csv
 from selenium.webdriver import Firefox
 
