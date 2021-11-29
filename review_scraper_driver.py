@@ -1,10 +1,6 @@
 import csv
 from selenium.webdriver import Firefox
 
-# Dune Reviews URL = 'https://www.rottentomatoes.com/m/dune_2021/reviews'
-# Dune Movie Page = 'https://www.rottentomatoes.com/m/dune_2021'
-# All Movies Page = 'https://www.rottentomatoes.com/browse/dvd-streaming-all/'
-
 #########################################################################
 # Crawling Rotten Tomatoes
 #########################################################################

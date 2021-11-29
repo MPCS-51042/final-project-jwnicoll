@@ -1,8 +1,6 @@
 import csv
 from selenium.webdriver import Firefox
 
-# Url: 'https://www.imdb.com/search/title/?num_votes=10000,&sort=user_rating,desc&title_type=feature'
-
 def find_imdb_scores_on_page(driver, imdb_scores):
     '''
         A function to associate movie titles to their imdb scores

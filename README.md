@@ -1,3 +1,38 @@
+# To Run:
+    Please download the following from :
+
+# File Summary:
+
+    review_scraper_driver.py: This module performs web scraping on the Rotten Tomatoes website and handles storage of the data.
+        Sample urls:
+            Dune's reviews: 'https://www.rottentomatoes.com/m/dune_2021/reviews'
+            Dune's movie home page: 'https://www.rottentomatoes.com/m/dune_2021'
+            Page with all of Rotten Tomatoes' movies: 'https://www.rottentomatoes.com/browse/dvd-streaming-all/'
+
+    imdb_scraper.py: This module performs web scraping on the IMDb website and handles storage of the data.
+        Sample url:
+            IMDb movies page: 'https://www.imdb.com/search/title/?num_votes=10000,&sort=user_rating,desc&title_type=feature'
+
+    sentimentanalyzer.py: This module builds the sentiment analyzer used to rescore movies based on Rotten Tomatoes critic reviews.
+
+    trainer.py: This module trains a tuning parameter used in building the sentiment analyzer.
+
+    sentiment_analyzer_builder.py: This module expedites the initiation of a sentiment analyzer from stored data.
+
+    rescoring.py: This module uses a sentiment analyzer to rescore movies based on Rotten Tomatoes critic reviews.
+    It offers a function to rescore all movies in a csv and save the data if reviews have already been collected.
+    It also offers a function to scrape for reviews and score a new movie.
+
+    scores_data_analysis.py: This module handles operations on pandas DataFrames generated from data that has already been collected.
+    It offers a function to split reviews into training and test sets.
+    It also offers functions to make a presentation of the analysis cleaner.
+
+# Natural Language Toolkit Citations:
+
+Bird, S., Klein, E., & Loper, E. (2009). Natural language processing with Python: analyzing text with the natural language toolkit. " O&#x27;Reilly Media, Inc."
+
+Hutto, C.J. & Gilbert, E.E. (2014). VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text. Eighth International Conference on Weblogs and Social Media (ICWSM-14). Ann Arbor, MI, June 2014.
+
 # Proposals
 Name: Jake Nicoll
 # This first idea was approved, and I'm excited for it, so my execution plan pertains to Project idea #1.
