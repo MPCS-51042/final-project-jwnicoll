@@ -1,10 +1,7 @@
-#############################################################################
-# Crawling IMDb
-#############################################################################
-# IMDB = 'https://www.imdb.com/search/title/?num_votes=10000,&sort=user_rating,desc&title_type=feature'       Using this one.
-# Or Here: = 'https://www.imdb.com/search/title/?title_type=feature&num_votes=10000,&countries=us&sort=user_rating,desc&ref_=adv_prv'
 import csv
 from selenium.webdriver import Firefox
+
+# Url: 'https://www.imdb.com/search/title/?num_votes=10000,&sort=user_rating,desc&title_type=feature'
 
 def find_imdb_scores_on_page(driver, imdb_scores):
     '''
@@ -49,6 +46,7 @@ def crawl_imdb_movies(imdb_url):
             The imdb_scores dictionary object described above.
     '''
     driver = Firefox()
+    driver.implicitly_wait(3)
     driver.get(imdb_url)
     imdb_scores = {}
     # To terminate eventually just in case.

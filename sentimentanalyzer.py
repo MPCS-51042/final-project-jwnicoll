@@ -1,9 +1,7 @@
 import nltk
 import string
-import re
 import math
 import trainer
-import scores_data_analysis as sda
 
 # Taken from nltk open source
 # https://github.com/nltk/nltk/blob/develop/nltk/sentiment/vader.py#L441
@@ -44,12 +42,12 @@ def tokenize(rev):
         and will clutter our analysis, and we force words to be lower case.
 
         Inputs:
-            rev: A str object containing the text of a review
+            rev: A str object containing the text of a review.
 
         Returns:
             A list object containing the words in the review.
     '''
-    potential_tokens = rev.split()
+    potential_tokens = str(rev).split()
     tokens = []
     for token in potential_tokens:
         # Remove stopwords and names
@@ -71,7 +69,7 @@ def create_distributions(revs, n, pos_revs_dist, neg_revs_dist):
         they appear in positive and negative reviews.
 
         Inputs:
-            revs: A dict object as described above.
+            revs: A dict object as described in get_revs
 
             n: An int object indicating what length ngrams we want.
 
@@ -104,11 +102,11 @@ def create_big_dist(revs):
         We consider ngrams for n = 1, 2, and 3.
 
         Inputs:
-            revs: A dict object as described above.
+            revs: A dict object as described in get_revs.
         
         Returns:
             A tuple containing the pos_revs_dist and neg_revs_dist
-                dict objects, as described above..
+                dict objects, as described in create_distributions.
     '''
     pos_revs_dist = {}
     neg_revs_dist = {}
@@ -122,6 +120,7 @@ def create_big_dist(revs):
 # ratio: 0.760    zeros: 829
 # all-at-once: alpha: 0.204   ratio: 0.793    zeros: 622
 # For Reference, vader scored:    ratio: 0.708   zeros: 581
+# New Alpha: 0.075
 def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
     '''
         This function finds the words which occur most frequently in positive
@@ -130,7 +129,8 @@ def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
         ambiguous.
 
         Inputs:
-            pos_revs_dist, neg_revs_dist: The dict objects described above.
+            pos_revs_dist, neg_revs_dist: The dict objects described in
+                create_distributions.
 
             alpha: A float object indicating the proportion of the smaller of
                 pos_revs_dist and neg_revs_dist we wish to use in classifying
@@ -167,19 +167,18 @@ def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
         i += 1
     return most_common_pos, most_common_neg
 
-# May want to include num_tiers parameter for finer resolution.
 def stratify(most_common_pos, most_common_neg, sentiment_strengths):
     '''
         A function to build sentiment_strengths, which is a dictionary
-        whose keys are words and whose values are the sentiment scores
-        associated with those words. We divide the most commonly occurring
+        whose keys are ngrams and whose values are the sentiment scores
+        associated with those ngrams. We divide the most commonly occurring
         words in positive (negative) reviews into four categories, and assign
         scores from 4 to 1 (-4 to -1) based on the categories, with higher
         magnitudes representing stronger sentiment.
 
         Inputs:
             most_common_pos, most_common_neg: lists of tuples
-                as described above.
+                as described in find_tops.
             
             sentiment_strengths: A dictionary object as described above.
         
@@ -196,7 +195,33 @@ def stratify(most_common_pos, most_common_neg, sentiment_strengths):
             sentiment_strengths[most_common_pos[j][0]] = (num_divs - 1) - i
             sentiment_strengths[most_common_neg[j][0]] = -(num_divs - 1) + i
 
-# Maybe add flexibility to not have to check for 1, 2, and 3 grams.
+def get_sentiment(rev, sentiment_strengths):
+    '''
+        A function which computes the sentiment strength of a review.
+        We add the sentiments of all of the words in the review,
+        as determined by sentiment_strengths.
+
+        Inputs:
+            rev: A str object containing the text of a review.
+
+            sentiment_strengths: A dict object, as described in the
+                stratify function.
+        
+        Returns:
+            An int object representing the sentiment contained in a review.
+    '''
+    sentiment = 0
+    rev = tokenize(rev)
+    num_words = len(rev)
+    for j in range(1, 4):
+        for k in range(num_words - j + 1):
+            token = (' ').join(rev[k : k + j])
+            if j == 1 and k > 0 and rev[k-1] == 'not':
+                sentiment -= sentiment_strengths.get(token, 0)
+            else:
+                sentiment += sentiment_strengths.get(token, 0)
+    return sentiment
+
 def test(df_test, sentiment_strengths):
     '''
         A function which tests sentiment_strengths' ability to classify
@@ -210,7 +235,8 @@ def test(df_test, sentiment_strengths):
                 and a column with True (False) indicating the review was
                 positive (negative).
             
-            sentiment_strengths: dict object as described previously.
+            sentiment_strengths: dict object as described in the
+                stratify function.
         
         Returns: The proportion of the reviews that were classified correctly,
             of the reviews that were able to be classified.
@@ -234,32 +260,6 @@ def test(df_test, sentiment_strengths):
     print(f"zeros: {zeros}")
     return correct / total
 
-def get_sentiment(rev, sentiment_strengths):
-    '''
-        A function which computes the sentiment strength of a review.
-        We add the sentiments of all of the words in the review,
-        as determined by sentiment_strengths.
-
-        Inputs:
-            rev: A str object containing the text of a review.
-
-            sentiment_strengths: A dict object, as described previously.
-        
-        Returns:
-            An int object representing the sentiment contained in a review.
-    '''
-    sentiment = 0
-    rev = tokenize(rev)
-    num_words = len(rev)
-    for j in range(1, 4):
-        for k in range(num_words - j + 1):
-            token = (' ').join(rev[k : k + j])
-            if j == 1 and k > 0 and rev[k-1] == 'not':
-                sentiment -= sentiment_strengths.get(token, 0)
-            else:
-                sentiment += sentiment_strengths.get(token, 0)
-    return sentiment
-
 def normalize_score(sentiment):
     '''
         A function to normalize a sentiment score to be between 0 and 100.
@@ -272,66 +272,6 @@ def normalize_score(sentiment):
         Returns:
             A float object representing the  normalized sentiment score.
     '''
-    # Have to decide what to do about this tuning parameter currently set to 15.
     sentiment = sentiment / math.sqrt((sentiment ** 2) + 15)
     sentiment = (sentiment + 1) * 50
     return sentiment
-
-#######################################################################################
-# Own module.
-def build_sentiment_strengths(df_train):
-    '''
-        A function which builds the sentiment strengths dict object as
-        described above directly from the training data dataframe.
-
-        Inputs:
-            df_train: A pandas DataFrame object as described previously
-        
-        Returns:
-            The sentiment_strengths dict object, as described previously.
-    '''
-    sentiment_strengths = {}
-    revs = get_revs(df_train)
-    pos_revs_dist, neg_revs_dist = create_big_dist(revs)
-    most_common_pos, most_common_neg = find_tops(pos_revs_dist, neg_revs_dist)
-    stratify(most_common_pos, most_common_neg, sentiment_strengths)
-    return sentiment_strengths
-
-def build_sentiment_strengths_123grams(df_train):
-    '''
-        A function to build sentiment strengths where 1gram, 2gram, and 3gram
-        frequency distributions are considered separately. The method above
-        performed better on training and test data, but we include this
-        function to provide the user flexibility.
-
-        Inputs:
-            df_train: As above.
-        
-        Returns:
-            sentiment_strengths, as above.
-    '''
-    sentiment_strengths = {}
-    alpha_1 = 0.784
-    alpha_2 = 0.178
-    alpha_3 = 0.175
-    revs = get_revs(df_train)
-    one_pos_dist = {}
-    one_neg_dist = {}
-    two_pos_dist = {}
-    two_neg_dist = {}
-    three_pos_dist = {}
-    three_neg_dist = {}
-    create_distributions(revs, 1, one_pos_dist, one_neg_dist)
-    create_distributions(revs, 1, two_pos_dist, two_neg_dist)
-    create_distributions(revs, 1, three_pos_dist, three_neg_dist)
-    one_pos_common, one_neg_common = find_tops(one_pos_dist, \
-                                                 one_neg_dist, alpha=alpha_1)
-    two_pos_common, two_neg_common = find_tops(two_pos_dist, \
-                                                 two_neg_dist, alpha=alpha_2)
-    three_pos_common, three_neg_common = find_tops(three_pos_dist, \
-                                                   three_neg_dist, \
-                                                   alpha=alpha_3)
-    stratify(one_pos_common, one_neg_common, sentiment_strengths)
-    stratify(two_pos_common, two_neg_common, sentiment_strengths)
-    stratify(three_pos_common, three_neg_common, sentiment_strengths)
-    return sentiment_strengths

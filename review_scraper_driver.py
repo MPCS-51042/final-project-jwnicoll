@@ -1,8 +1,5 @@
 import csv
 from selenium.webdriver import Firefox
-from nltk.sentiment import SentimentIntensityAnalyzer
-import sentimentanalyzer as sa
-import scores_data_analysis as sda
 
 # Dune Reviews URL = 'https://www.rottentomatoes.com/m/dune_2021/reviews'
 # Dune Movie Page = 'https://www.rottentomatoes.com/m/dune_2021'
@@ -29,7 +26,10 @@ def read_reviews_page(driver, reviews_and_scores):
         Returns:
             Nothing is returned. reviews_and_scores is modified in place.
     '''
-    rows = driver.find_elements_by_class_name('review_table_row')
+    try:
+        rows = driver.find_elements_by_class_name('review_table_row')
+    except:
+        return
     for row in rows:
         try:
             review_name = row.find_element_by_class_name('review_icon') \
@@ -38,9 +38,6 @@ def read_reviews_page(driver, reviews_and_scores):
                 score = True
             else:
                 score = False
-        except:
-            continue
-        try:
             review = row.find_element_by_class_name('the_review').text.strip()
             reviews_and_scores[review] = score
         except:
@@ -49,8 +46,9 @@ def read_reviews_page(driver, reviews_and_scores):
 def crawl_reviews(driver, reviews_url, page_count=50):
     '''
         This function processes all critic reviews on the Rotten Tomatoes
-        website associated with a single movie. We obtain a mapping
-        of the text of reviews to whether the review was positive or negative.
+        website associated with a single movie. We obtain a dict object
+        mapping the text of reviews to whether the review was
+        positive or negative.
 
         Inputs:
             driver: A selenium.webdriver Firefox object.
@@ -68,7 +66,15 @@ def crawl_reviews(driver, reviews_url, page_count=50):
                 review to a boolean indicating whether the review was
                 positive or negative.
     '''
-    driver.get(reviews_url)
+    try:
+        driver.get(reviews_url)
+        driver.set_page_load_timeout(30)
+    except:
+        try:
+            driver.get(reviews_url)
+            driver.set_page_load_timeout(30) 
+        except:
+            return {}
     reviews_and_scores = {}
     # See if there is another next button to click.
     more_reviews = True
@@ -83,14 +89,12 @@ def crawl_reviews(driver, reviews_url, page_count=50):
         count += 1
     return reviews_and_scores
 
-def read_movie_page(driver, movie_url, reviews):
+def read_movie_page(movie_url, reviews):
     '''
         This function collects all of the information we want
         for a single movie.
 
         Inputs:
-            driver: A selenium.webdriver Firefox object.
-
             movie_url: A str object containing the url of the Rotten Tomatoes
                 page for a given movie.
             
@@ -103,51 +107,61 @@ def read_movie_page(driver, movie_url, reviews):
             Nothing is returned by this function. The reviews dictionary
                 is modified in place.
     '''
-    driver.get(movie_url)
+    driver = Firefox()
+    driver.implicitly_wait(3)
+    try:
+        driver.get(movie_url)
+        driver.set_page_load_timeout(30)
+    except:
+        try:
+            driver.get(movie_url)
+            driver.set_page_load_timeout(30) 
+        except:
+            driver.quit()
+            return
     try:
         scoreboard = driver.find_element_by_class_name('thumbnail-scoreboard-wrap')
-    except:
-        return
-    try:
         title_tag = scoreboard.find_element_by_tag_name('button')
+        title = title_tag.get_attribute('data-title')
+        ratings = scoreboard.find_element_by_tag_name('score-board')
+        audience_score = ratings.get_attribute('audiencescore')
+        tomatometer_score = ratings.get_attribute('tomatometerscore')
+        grade = ratings.get_attribute('tomatometerstate')
+        revs = driver.find_element_by_class_name('view_all_critic_reviews')
+        reviews_url = revs.get_attribute('href')
     except:
+        driver.quit()
         return
-    title = title_tag.get_attribute('data-title')
-    ratings = scoreboard.find_element_by_tag_name('score-board')
-    audience_score = ratings.get_attribute('audiencescore')
-    tomatometer_score = ratings.get_attribute('tomatometerscore')
-    grade = ratings.get_attribute('tomatometerstate')
-    revs = driver.find_element_by_class_name('view_all_critic_reviews')
-    reviews_url = revs.get_attribute('href')
     reviews[title] = [crawl_reviews(driver, reviews_url), audience_score, \
                       tomatometer_score, grade]
+    driver.quit()
 
-def find_reviews(all_movies_url, num_clicks):
+def find_urls(all_movies_url, num_clicks):
     '''
-        This function generates the reviews dictionary described above from
-        from the Rotten Tomatoes page containing all movies with information
-        stored on the site.
+        A function to find the urls for movie pages I want to scrape.
+        It is more convenient to acquire this list before collecting
+        reviews and movie ratings because of how Rotten Tomatoes displays
+        its information.
 
         Inputs:
             all_movies_url: A str object containing the url of the page
                 containing all movies with information stored on
                 Rotten Tomatoes.
-            
+
             num_clicks: An int indicating how many times "Show More" should be
                 clicked. Each click displays an additional 32 movies.
         
-        Returns:
-            The reviews dict object described above.
+        Returns: A list of urls of Rotten Tomatoes pages to crawl.
     '''
     driver = Firefox()
     driver.get(all_movies_url)
-    reviews = {}
+    driver.implicitly_wait(3)
     clicks = 0
     more_movies = driver.find_element_by_class_name('btn-secondary-rt')
     while clicks < num_clicks:
+        clicks += 1
         try:
             more_movies.click()
-            clicks += 1
         except:
             break
     movies = driver.find_elements_by_class_name('mb-movie')
@@ -155,114 +169,75 @@ def find_reviews(all_movies_url, num_clicks):
     for movie in movies:
         movie_url = movie.find_element_by_tag_name('a').get_attribute('href')
         url_list.append(movie_url)
-    for url in url_list:
-        read_movie_page(driver, url, reviews)
     driver.quit()
+    return url_list
+
+def find_matches(imdb_titles, url_list):
+    '''
+        A function to find which urls correspond to movies for which I also
+        have data from IMDb, since these are the movies I am interested in.
+
+        Inputs:
+            imdb_titles: list object of imdb movie titles.
+
+            url_list: list object of Rotten Tomatoes movie pages to crawl.
+        
+        Returns:
+            A list object containing the urls of Rotten Tomatoes movie pages
+                for which I also have IMDb data.
+    '''
+    urls = []
+    for url in url_list:
+        try:
+            driver = Firefox()
+            driver.implicitly_wait(3)
+            driver.get(url)
+            driver.set_page_load_timeout(30)
+            scoreboard = driver.find_element_by_class_name('thumbnail-scoreboard-wrap')
+            title_tag = scoreboard.find_element_by_tag_name('button')
+            title = title_tag.get_attribute('data-title')
+            if title in imdb_titles:
+                urls.append(url)
+            driver.quit()
+        except:
+            driver.quit()
+            continue
+    return urls
+
+def find_reviews(url_list):
+    '''
+        This function generates the reviews dictionary described above from
+        from the Rotten Tomatoes page containing all movies with information
+        stored on the site.
+
+        Inputs:
+            url_list: A list object containing strings with the urls of movie
+                pages that we will scrape.
+        
+        Returns:
+            The reviews dict object described in read_movie_page.
+    '''
+    reviews = {}
+    for url in url_list:
+        try:
+            read_movie_page(url, reviews)
+        except:
+            continue
     return reviews
 
-def get_reviews_and_scores(all_movies_url, num_clicks):
+def get_reviews_and_scores(url_list):
     '''
         This function builds the reviews object described above, and generates
         csv files, as described in those functions' doc strings.
         Inputs:
-            all_movies_url: A str object, as described above.
-
-            num_clicks: An int as described above.
+            url_list: list object described in find_reviews
         
         Returns:
             Nothing is returned, but the csv files are generated.
     '''
-    reviews = find_reviews(all_movies_url, num_clicks)
+    reviews = find_reviews(url_list)
     gen_csv(reviews, 'rottentomatoes.csv', sa_scores=False)
     gen_csv_reviews_text(reviews, 'reviewstext.csv')
-
-###################################################################
-# Rescoring Movie
-###################################################################
-def rescore_movie(movie_url, sentiment_strengths):
-    '''
-        This function uses the constructed sentiment_strengths dictionary
-        to rescore a movie using that movie's reviews.
-
-        Inputs:
-            movie_url: A str object containing the Rotten Tomatoes webpage
-                of the movie to be rescored.
-            
-            sentiment_strengths: A dict object mapping words, bigrams, and
-                trigrams to values characterizing their association with
-                negative and positive reviews.
-        
-        Returns:
-            Nothing is returned. However, this function prints the appropriate
-                movie title, audience score, critic score, and the score
-                awared by a sentiment analysis of the movie's reviews.
-    '''
-    driver = Firefox()
-    reviews = {}
-    read_movie_page(driver, movie_url, reviews)
-    driver.quit()
-    if reviews:
-        title, info = list(reviews.items())[0]
-        revs = info[0]
-        total_sentiment = 0
-        num_reviews = 0
-        for rev in revs.keys():
-            rev = str(rev)
-            raw_score = sa.get_sentiment(rev, sentiment_strengths)
-            sentiment = sa.normalize_score(raw_score)
-            total_sentiment += sentiment
-            num_reviews += 1
-        avg_sentiment = total_sentiment / num_reviews
-        print((f"Movie Title: {title},\tAudience Score: {info[1]},\t"
-               f"Critic Score: {info[2]},\t"
-               f"Sentiment Analyzer Score: {avg_sentiment}"))
-    else:
-        print("No reviews found.")
-
-###################################################################
-# Adding Sentiment Scores.
-###################################################################
-def add_sentiment_scores(scores_csv, reviews_csv, sentiment_strengths, \
-                         file_name, reviews=None):
-    '''
-        This function creates a csv with rows containing a movie title, that
-        movie's audience score, its critic score, its Rotten Tomatoes rating,
-        and its score awarded by a sentiment analysis of the movie's reviews.
-
-        Inputs:
-            scores_csv: A str object containing the name of a csv file
-                generated by gen_csv.
-
-            reviews_csv: A str object containing the name of a csv file
-                generated by gen_csv_reviews_text.
-            
-            sentiment_strengths: A dict object as described in rescore movie.
-
-            file_name: A string containing the name of the csv file
-                to be created.
-            
-            reviews: The reviews dict object described above. If it is not
-                passed in, we generate it.
-        
-        Returns:
-            Nothing is returned. A csv file as described in gen_csv
-                is created.
-    '''
-    if not reviews:
-        reviews = gen_revs_from_csvs(scores_csv, reviews_csv, False)
-    for movie, info in reviews.items():
-        revs = info[0]
-        total_sa_score = 0
-        num_revs = 0
-        for rev in revs.keys():
-            rev = str(rev)
-            raw_score = sa.get_sentiment(rev, sentiment_strengths)
-            sa_score = sa.normalize_score(raw_score)
-            total_sa_score += sa_score
-            num_revs += 1
-        info += [str(total_sa_score / num_revs)]
-        reviews[movie] = info
-    gen_csv(reviews, file_name, sa_scores=True)
 
 ##################################################################
 # Storing Data.
@@ -271,7 +246,8 @@ def gen_csv(reviews, file_name, sa_scores):
     '''
         A function which creates a csv file whose rows contain a movie title,
         that movie's audience score, its critic score, and its
-        Rotten Tomatoes rating.
+        Rotten Tomatoes rating. The sentiment analyzer score is provided
+        if sa_scores is True.
 
         Inputs:
             reviews: A dict object as described in read_movie_page.
@@ -332,7 +308,7 @@ def gen_revs_from_csvs(scores_csv, reviews_csv, sa_scores):
                 are present (True) or absent (False) in the csv.
         
         Returns:
-            The dict object reviews, as described above.
+            The dict object reviews, as described in read_movie_page.
     '''
     reviews = {}
     with open(reviews_csv, 'r') as f:
