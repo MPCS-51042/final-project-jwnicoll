@@ -118,13 +118,6 @@ def create_big_dist(revs):
         create_distributions(revs, i, pos_revs_dist, neg_revs_dist)
     return pos_revs_dist, neg_revs_dist
 
-# Empirically derived alpha:
-# 1-grams: 0.784     2-grams: 0.178       3-grams: 0.175
-# (^^^ Not trained sequentially, trained discretely)
-# ratio: 0.760    zeros: 829
-# all-at-once: alpha: 0.204   ratio: 0.793    zeros: 622
-# For Reference, vader scored:    ratio: 0.708   zeros: 581
-# New Alpha: 0.075
 def find_tops(pos_revs_dist, neg_revs_dist, alpha=ALPHA):
     '''
         This function finds the words which occur most frequently in positive
@@ -247,12 +240,10 @@ def test(df_test, sentiment_strengths):
     '''
     correct = 0
     total = 0
-    zeros = 0
     for i in range(len(df_test)):
         rev = tokenize(str(df_test['Review'][i]))
         sentiment = get_sentiment(rev, sentiment_strengths)
         if sentiment == 0:
-            zeros += 1
             continue
         if sentiment > 0:
             is_pos = True
@@ -261,7 +252,6 @@ def test(df_test, sentiment_strengths):
         if is_pos == df_test['Review is Positive'][i]:
             correct += 1
         total += 1
-    print(f"zeros: {zeros}")
     return correct / total
 
 def normalize_score(sentiment):

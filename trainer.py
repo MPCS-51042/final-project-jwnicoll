@@ -43,7 +43,6 @@ def find_alpha(min_, max_, increment, pos_revs_dist, neg_revs_dist, df_test):
         sentiment_strengths = {}
         sa.stratify(most_common_pos, most_common_neg, sentiment_strengths)
         ratio = sa.test(df_test, sentiment_strengths)
-        print(ratio)
         ratios.append((ratio, i))
         i += increment
     return max(ratios)
@@ -68,5 +67,4 @@ def train_alpha(min_, max_, increment, pos_revs_dist, neg_revs_dist, df_test):
         min_ = max(alpha - increment / 2, 0)
         max_ = min(1, alpha + increment /2)
         increment /= 10
-        print(f'ratio: {ratio}, alpha: {alpha}\n')
     return ratio, alpha
