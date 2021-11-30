@@ -41,9 +41,6 @@ def build_sentiment_strengths_123grams(df_train):
             sentiment_strengths, as in build_sentiment_strengths.
     '''
     sentiment_strengths = {}
-    alpha_1 = 0.784
-    alpha_2 = 0.178
-    alpha_3 = 0.175
     revs = sa.get_revs(df_train)
     one_pos_dist = {}
     one_neg_dist = {}
@@ -55,12 +52,12 @@ def build_sentiment_strengths_123grams(df_train):
     sa.create_distributions(revs, 1, two_pos_dist, two_neg_dist)
     sa.create_distributions(revs, 1, three_pos_dist, three_neg_dist)
     one_pos_common, one_neg_common = sa.find_tops(one_pos_dist, \
-                                                 one_neg_dist, alpha=alpha_1)
+                                                 one_neg_dist, alpha=sa.ALPHA_1)
     two_pos_common, two_neg_common = sa.find_tops(two_pos_dist, \
-                                                 two_neg_dist, alpha=alpha_2)
+                                                 two_neg_dist, alpha=sa.ALPHA_2)
     three_pos_common, three_neg_common = sa.find_tops(three_pos_dist, \
                                                    three_neg_dist, \
-                                                   alpha=alpha_3)
+                                                   alpha=sa.ALPHA_3)
     sa.stratify(one_pos_common, one_neg_common, sentiment_strengths)
     sa.stratify(two_pos_common, two_neg_common, sentiment_strengths)
     sa.stratify(three_pos_common, three_neg_common, sentiment_strengths)

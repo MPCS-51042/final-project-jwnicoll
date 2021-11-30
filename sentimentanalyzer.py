@@ -11,6 +11,10 @@ nltk.download(['names', 'stopwords'])
 NAMES = nltk.corpus.names.words()
 STOPWORDS = nltk.corpus.stopwords.words('english')
 STOPWORDS.append("n't")
+ALPHA = 0.215
+ALPHA_1 = 0.784
+ALPHA_2 = 0.178
+ALPHA_3 = 0.175
 
 def get_revs(df_train):
     '''
@@ -121,7 +125,7 @@ def create_big_dist(revs):
 # all-at-once: alpha: 0.204   ratio: 0.793    zeros: 622
 # For Reference, vader scored:    ratio: 0.708   zeros: 581
 # New Alpha: 0.075
-def find_tops(pos_revs_dist, neg_revs_dist, alpha=0.204):
+def find_tops(pos_revs_dist, neg_revs_dist, alpha=ALPHA):
     '''
         This function finds the words which occur most frequently in positive
         and negative reviews. We remove words which are deemed to occur

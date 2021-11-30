@@ -1,5 +1,15 @@
 # To Run:
-    Please download the following from :
+    Please download the following from https://drive.google.com/drive/folders/1eBTzxN2jFROtyMJRz_A9nRziIw8pAbln?usp=sharing
+
+        scores_commonurls.csv
+        imdb_scores.csv
+        sentiment_strengths.csv
+
+    These files will allow you to run all of the code in the jupyter notebook.
+
+    In addition, the following file provides the csv containing reviews from the Rotten Tomatoes web scrape:
+    
+        reviews_commonurls.csv
 
 # File Summary:
 
