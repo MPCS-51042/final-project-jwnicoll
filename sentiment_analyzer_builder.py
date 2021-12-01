@@ -64,6 +64,20 @@ def build_sentiment_strengths_123grams(df_train):
     return sentiment_strengths
 
 def gen_csv_from_sentiment_strengths(sentiment_strengths, file_name):
+    '''
+        Generate a csv file from sentiment_strengths for faster reloading.
+
+        Inputs:
+            sentiment_strengths: A dict object, as in
+                build_sentiment_strengths.
+
+            file_name: A string object containing the name of the
+                csv file to be generated.
+        
+        Returns:
+            Nothing is returned, but a csv file with columns containing
+                ngrams and their associated sentiment score is generated.
+    '''
     with open(file_name, 'w') as f:
         writer = csv.writer(f, delimiter=',')
         for token, score in sentiment_strengths.items():
@@ -71,6 +85,17 @@ def gen_csv_from_sentiment_strengths(sentiment_strengths, file_name):
             writer.writerow(row)
 
 def gen_sentiment_strengths_from_csv(csvfile):
+    '''
+        Generate sentiment_strengths from a csv file.
+
+        Inputs:
+            csvfile: A string containing the name of a csv file generated
+                by gen_csv_from_sentiment_strengths.
+        
+        Returns:
+            sentiment_strengths: A dict object, as in
+                build_sentiment_strengths.
+    '''
     sentiment_strengths = {}
     with open(csvfile, 'r') as f:
         reader = csv.reader(f)

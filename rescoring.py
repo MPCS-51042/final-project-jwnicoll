@@ -38,7 +38,7 @@ def rescore_movie(movie_url, sentiment_strengths):
         avg_sentiment = total_sentiment / num_reviews
         print((f"Movie Title: {title},\tAudience Score: {info[1]},\t"
                f"Critic Score: {info[2]},\t"
-               f"Sentiment Analyzer Score: {avg_sentiment}"))
+               f"Sentiment Analyzer Score: {avg_sentiment: .2f}"))
     else:
         print("No reviews found.")
 

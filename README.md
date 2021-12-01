@@ -10,6 +10,11 @@
     In addition, the following file provides the csv containing reviews from the Rotten Tomatoes web scrape:
     
         reviews_commonurls.csv
+    
+    The following is the same as scores_commonurls.csv before sentiment analyzer scores were added:
+        reviews_scores_commonurls.csv
+    
+    If that link doesn't work, try this one: https://drive.google.com/drive/folders/1Gmg64lwcC7tWt1qKIgefsgXkpksW1dJk?usp=sharing
 
 # File Summary:
 

@@ -3,7 +3,6 @@ import string
 import math
 import trainer
 
-# Taken from nltk open source
 # https://github.com/nltk/nltk/blob/develop/nltk/sentiment/vader.py#L441
 
 PUNCTUATION = string.punctuation
@@ -170,7 +169,7 @@ def stratify(most_common_pos, most_common_neg, sentiment_strengths):
         whose keys are ngrams and whose values are the sentiment scores
         associated with those ngrams. We divide the most commonly occurring
         words in positive (negative) reviews into four categories, and assign
-        scores from 4 to 1 (-4 to -1) based on the categories, with higher
+        scores from 5 to 1 (-5 to -1) based on the categories, with higher
         magnitudes representing stronger sentiment.
 
         Inputs:
